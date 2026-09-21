@@ -14,6 +14,22 @@
 <div id="creditsTag">양준성 · 양성이버섯</div>
 
 <button id="muteBtn" class="iconBtn" title="음소거">🔊</button>
+<button id="mobileBtn" class="iconBtn mobileToggleBtn" title="모바일 조작 모드">📱</button>
+
+<!-- Mobile touch controls -->
+<div id="mobileControls" class="hidden">
+  <div id="moveButtons" class="touchGroup touchGroupLeft">
+    <button id="btnLeft" class="touchBtn touchBtnMove">◀</button>
+    <div class="touchCol">
+      <button id="btnJump" class="touchBtn touchBtnMove touchBtnJump">▲</button>
+      <button id="btnDown" class="touchBtn touchBtnMove touchBtnDown">▼</button>
+    </div>
+    <button id="btnRight" class="touchBtn touchBtnMove">▶</button>
+  </div>
+  <div class="touchGroup touchGroupRight">
+    <button id="btnAttack" class="touchBtn touchBtnAttack">⚔</button>
+  </div>
+</div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
@@ -21,6 +37,7 @@
     <div class="hudBox dayBox">
       <div class="dayLabel">DAY <span id="dayNum">1</span> / 100</div>
       <div class="dayBar"><div id="dayFill" class="dayFill"></div></div>
+      <div id="playTimeLabel" class="playTimeRow hidden">⏱ 00:00</div>
     </div>
     <div class="hudBox hpBox">
       <div class="hpLabel">❤ HP</div>
@@ -43,7 +60,6 @@
 <button id="shopBtn" class="hidden">🛒 상점</button>
 <button id="helpBtn" class="hidden">❓ 설명</button>
 
-<div id="playTimeLabel" class="hidden">⏱ 00:00</div>
 
 <!-- Intro dialogue / start button -->
 <div id="introDialogue" class="introText hidden"></div>
@@ -91,6 +107,7 @@
       <div class="helpRow"><span class="helpKey">← / →</span><span>행성 둘레 이동</span></div>
       <div class="helpRow"><span class="helpKey">↑</span><span>점프 (연타 시 중력장을 벗어나 우주로 진입)</span></div>
       <div class="helpRow"><span class="helpKey">Space</span><span>공격 (맨주먹 또는 장착한 무기)</span></div>
+      <div class="helpRow"><span class="helpKey">📱 모바일 모드</span><span>화면 우측 상단 버튼으로 켜면 이동/점프/공격 터치 버튼이 나타납니다</span></div>
     </div>
     <div class="helpSection">
       <h3>위협 요소</h3>

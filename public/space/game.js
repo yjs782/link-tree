@@ -194,6 +194,11 @@ function ensureMusic(){
   }
 }
 
+// ---------- Game state (declared early: referenced by input/mobile-control setup below) ----------
+let STATE = 'intro'; // intro -> cutscene -> playing -> shop(overlay) -> gameover -> ending
+let paused = false;
+let lastTime = 0;
+
 // ---------- Input ----------
 const keys = {};
 window.addEventListener('keydown', (e)=>{
@@ -203,6 +208,55 @@ window.addEventListener('keydown', (e)=>{
   keys[e.code] = true;
 });
 window.addEventListener('keyup', (e)=>{ keys[e.code] = false; });
+
+// ---------- Mobile touch controls ----------
+const mobileBtn = document.getElementById('mobileBtn');
+const mobileControls = document.getElementById('mobileControls');
+let mobileModeOn = false;
+// only show the touch buttons while actually playing — otherwise they sit above
+// (and block/overlap) the intro's skip button, the shop/help/ending buttons, etc.
+function updateMobileControlsVisibility(){
+  mobileControls.classList.toggle('hidden', !(mobileModeOn && STATE === 'playing'));
+}
+function setMobileMode(on){
+  mobileModeOn = on;
+  mobileBtn.classList.toggle('active', on);
+  document.body.classList.toggle('mobileLayout', on);
+  updateMobileControlsVisibility();
+  try{ localStorage.setItem('mobileMode', on ? '1' : '0'); }catch(e){}
+}
+mobileBtn.addEventListener('click', ()=>{
+  setMobileMode(!mobileModeOn);
+});
+let savedMobileMode = false;
+try{ savedMobileMode = localStorage.getItem('mobileMode') === '1'; }catch(e){}
+setMobileMode(savedMobileMode);
+
+function bindHoldKey(btn, code, onPress){
+  const press = (e)=>{
+    e.preventDefault();
+    keys[code] = true;
+    if(onPress) onPress();
+  };
+  const release = (e)=>{
+    e.preventDefault();
+    keys[code] = false;
+  };
+  btn.addEventListener('pointerdown', press);
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointercancel', release);
+  btn.addEventListener('pointerleave', release);
+  btn.addEventListener('contextmenu', (e)=>e.preventDefault());
+}
+bindHoldKey(document.getElementById('btnLeft'), 'ArrowLeft');
+bindHoldKey(document.getElementById('btnRight'), 'ArrowRight');
+bindHoldKey(document.getElementById('btnJump'), 'ArrowUp', onJumpPress);
+bindHoldKey(document.getElementById('btnDown'), 'ArrowDown');
+document.getElementById('btnAttack').addEventListener('pointerdown', (e)=>{
+  e.preventDefault();
+  onAttackPress();
+});
+document.getElementById('btnAttack').addEventListener('contextmenu', (e)=>e.preventDefault());
 
 // ---------- DOM refs ----------
 const dom = {
@@ -293,10 +347,6 @@ function laserGravityClip(x,y,angle,maxRange){
 }
 
 // ---------- Game state ----------
-let STATE = 'intro'; // intro -> cutscene -> playing -> shop(overlay) -> gameover -> ending
-let paused = false;
-let lastTime = 0;
-
 let game = null; // populated by resetGame()
 
 function resetGame(){
@@ -1205,6 +1255,10 @@ function updateLaserMonsters(dt){
 // ---------- Big whale pod (shows up every 2nd day, chases the player and snipes with a laser; each whale bolts the moment it grazes a planet's gravity field) ----------
 const WHALE_RANGE = 620;
 const WHALE_SCALE = 3; // visual body size multiplier
+// approx. half-length of the whale's sprite (body + tail) at WHALE_SCALE, so gravity contact is
+// judged by its body's edge grazing the dashed line, not by its center point reaching all the
+// way past it to the planet itself
+const WHALE_BODY_RADIUS = 46 * WHALE_SCALE;
 const WHALE_POD_MIN = 3, WHALE_POD_MAX = 5; // spawn a whole pod instead of a single whale
 const WHALE_LASER_SPEED = 600; // world units/sec the beam tip travels at (was 420), instead of an instant hitscan
 function spawnWhale(){
@@ -1259,10 +1313,12 @@ function updateWhale(w, dt){
 
   // touching any planet's gravity field (the dashed line) scares it off immediately: checked
   // right after movement and before the attack state machine, so contact always pre-empts
-  // that frame's charge/fire instead of letting one more shot slip out first
+  // that frame's charge/fire instead of letting one more shot slip out first. The whale's own
+  // body radius is added to the trigger distance so it reacts once its sprite grazes the dashed
+  // line, instead of only once its center point has traveled all the way in to the planet itself.
   for(const p of [HOME, ...ALIEN_PLANETS]){
     const gd = dist(w.x,w.y,p.x,p.y);
-    const gr = gravR(p);
+    const gr = gravR(p) + WHALE_BODY_RADIUS;
     if(gd <= gr){
       const nx = (w.x-p.x)/Math.max(1,gd), ny = (w.y-p.y)/Math.max(1,gd);
       w.x = p.x + nx*gr;
@@ -1277,17 +1333,32 @@ function updateWhale(w, dt){
 
   if(w.state==='idle'){
     if(d < w.range){
-      w.state = 'charging';
-      w.stateT = Math.max(0.5, 0.9 - df*0.3);
-      w.aimAngle = Math.atan2(pl.y-w.y, pl.x-w.x);
+      const ang = Math.atan2(pl.y-w.y, pl.x-w.x);
+      // don't even start charging a shot a gravity field would immediately swallow —
+      // avoids a telegraph line that would otherwise flicker as the aim angle shifts
+      if(laserGravityClip(w.x, w.y, ang, w.range) >= w.range - 0.5){
+        w.state = 'charging';
+        w.stateT = Math.max(0.5, 0.9 - df*0.3);
+        w.aimAngle = ang;
+      }
     }
   } else if(w.state==='charging'){
     w.aimAngle = Math.atan2(pl.y-w.y, pl.x-w.x);
+    // the player may have drifted behind a planet mid-charge: bail out the instant a gravity
+    // field blocks the line of sight instead of letting the warning line flicker at its edge
+    if(laserGravityClip(w.x, w.y, w.aimAngle, w.range) < w.range - 0.5){
+      w.state = 'cooldown';
+      w.stateT = rand(1.5, 2.5);
+      return;
+    }
     w.stateT -= dt;
     if(w.stateT<=0){
       w.state='firing';
       // the beam can't reach past a gravity field, so it's cut short there
       w.beamMax = laserGravityClip(w.x, w.y, w.aimAngle, w.range);
+      // remember whether a gravity field (not just max range) is what's cutting it short,
+      // so the firing tick below can make the whole beam vanish the instant it touches the field
+      w.gravityClipped = w.beamMax < w.range - 0.5;
       // firing lasts as long as the (possibly shortened) beam takes to cross it, plus a short linger
       w.stateT = w.beamMax/WHALE_LASER_SPEED + 0.2;
       w.fired=false;
@@ -1307,6 +1378,14 @@ function updateWhale(w, dt){
         SFX.hit();
       } else if(w.beamDist >= w.beamMax){
         w.fired = true; // missed: beam reached max range (or a gravity field) without touching the player
+        if(w.gravityClipped){
+          // the beam just touched a planet's gravity field: the whole thing vanishes right
+          // away instead of lingering there, so it reads as the field swallowing the shot
+          w.state = 'cooldown';
+          w.stateT = rand(3.5,5.0);
+          w.beamDist = 0;
+          return;
+        }
       }
     }
     w.stateT -= dt;
@@ -1354,6 +1433,7 @@ function triggerGameOver(eaten){
   dom.endingPreviewBtn.classList.add('hidden');
   dom.helpBtn.classList.add('hidden');
   dom.helpModal.classList.add('hidden');
+  updateMobileControlsVisibility();
   dom.playTimeLabel.classList.add('hidden');
   dom.goSurvived.textContent = eaten ? `우주 괴물에게 잡아먹혔습니다... (${game.day}일째 생존)` : `생명력을 모두 잃었습니다... (${game.day}일째 생존)`;
   dom.gameOverOverlay.classList.remove('hidden');
@@ -1370,6 +1450,7 @@ function startEnding(){
   dom.helpModal.classList.add('hidden');
   dom.playTimeLabel.classList.add('hidden');
   dom.shopModal.classList.add('hidden');
+  updateMobileControlsVisibility();
   SFX.win();
   const pl = game.player;
   const alreadyHome = pl.mode==='landed' && pl.planetRef===HOME;
@@ -2803,6 +2884,7 @@ function beginPlaying(){
   dom.yearLabel.classList.add('hidden');
   dom.introDialogue.classList.add('hidden');
   dom.startBtn.classList.add('hidden');
+  updateMobileControlsVisibility();
   game.fade = 1;
 }
 
