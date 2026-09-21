@@ -96,12 +96,12 @@ html,body{
 .touchGroupRight{ right:16px; }
 .touchBtn{
   pointer-events:auto;
-  width:64px;height:64px;
+  width:32px;height:32px;
   border-radius:50%;
   border:1px solid var(--panelBorder);
   background:var(--panel);
   color:#fff;
-  font-size:24px;
+  font-size:12px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -119,8 +119,8 @@ html,body{
   pointer-events:none;
 }
 .touchBtnAttack{
-  width:78px;height:78px;
-  font-size:28px;
+  width:39px;height:39px;
+  font-size:14px;
   background:rgba(255,107,107,0.18);
   border-color:var(--accent2);
 }
