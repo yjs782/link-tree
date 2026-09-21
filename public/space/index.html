@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>우주 생존기: 100일</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="creditsTag">양준성 · 양성이버섯</div>
+
+<button id="muteBtn" class="iconBtn" title="음소거">🔊</button>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hudTop">
+    <div class="hudBox dayBox">
+      <div class="dayLabel">DAY <span id="dayNum">1</span> / 100</div>
+      <div class="dayBar"><div id="dayFill" class="dayFill"></div></div>
+    </div>
+    <div class="hudBox hpBox">
+      <div class="hpLabel">❤ HP</div>
+      <div class="hpBar"><div id="hpFill" class="hpFill"></div></div>
+    </div>
+    <div class="hudBox goldBox">
+      <div>🪙 <span id="goldNum">0</span></div>
+      <div id="carryGoldRow" class="carryRow hidden">운반중: <span id="carryNum">0</span> (속도 -10%)</div>
+    </div>
+    <div class="hudBox gearBox">
+      <div id="weaponLabel">🥊 맨주먹</div>
+      <div id="shieldLabel">🛡 없음</div>
+    </div>
+  </div>
+  <div id="invasionBanner" class="banner hidden">⚠ 외계인 침공! 전부 처치하기 전까지 우주로 나갈 수 없습니다 ⚠<br><span id="invasionCount"></span></div>
+  <div id="warningBanner" class="banner warnBanner hidden">🚨 경고: 정체불명의 함선이 접근 중입니다 🚨</div>
+</div>
+
+<button id="endingPreviewBtn" class="hidden">🏁 엔딩 보기</button>
+<button id="shopBtn" class="hidden">🛒 상점</button>
+<button id="helpBtn" class="hidden">❓ 설명</button>
+
+<div id="playTimeLabel" class="hidden">⏱ 00:00</div>
+
+<!-- Intro dialogue / start button -->
+<div id="introDialogue" class="introText hidden"></div>
+<button id="startBtn" class="hidden">시작하기</button>
+<div id="yearLabel" class="yearLabel hidden"></div>
+<button id="skipIntroBtn">건너뛰기 ⏭</button>
+
+<!-- Shop Modal -->
+<div id="shopModal" class="modalOverlay hidden">
+  <div class="modalBox">
+    <h2>상점</h2>
+    <p class="goldLine">보유 골드: <span id="shopGold">0</span> 🪙</p>
+    <div class="shopItem">
+      <div class="shopItemInfo">
+        <div class="shopItemName" id="weaponName">무기: 맨주먹</div>
+        <div class="shopItemDesc" id="weaponDesc"></div>
+      </div>
+      <button id="buyWeaponBtn" class="buyBtn">강화 (<span id="weaponPrice">0</span>🪙)</button>
+    </div>
+    <div class="shopItem">
+      <div class="shopItemInfo">
+        <div class="shopItemName" id="shieldName">보호막: 없음</div>
+        <div class="shopItemDesc" id="shieldDesc"></div>
+      </div>
+      <button id="buyShieldBtn" class="buyBtn">구매/충전 (<span id="shieldPrice">0</span>🪙)</button>
+    </div>
+    <div class="shopItem">
+      <div class="shopItemInfo">
+        <div class="shopItemName">생명력 강화</div>
+        <div class="shopItemDesc" id="lifeDesc"></div>
+      </div>
+      <button id="buyLifeBtn" class="buyBtn">구매 (<span id="lifePrice">0</span>🪙)</button>
+    </div>
+    <button id="closeShopBtn" class="closeBtn">닫기</button>
+  </div>
+</div>
+
+<!-- Help / Instructions -->
+<div id="helpModal" class="modalOverlay hidden">
+  <div class="modalBox helpBox">
+    <h2>설명</h2>
+    <p class="goldLine">목표: <strong>100일</strong> 동안 생존하기 (게임 내 1일 = 실제 30초)</p>
+    <div class="helpSection">
+      <h3>조작키</h3>
+      <div class="helpRow"><span class="helpKey">← / →</span><span>행성 둘레 이동</span></div>
+      <div class="helpRow"><span class="helpKey">↑</span><span>점프 (연타 시 중력장을 벗어나 우주로 진입)</span></div>
+      <div class="helpRow"><span class="helpKey">Space</span><span>공격 (맨주먹 또는 장착한 무기)</span></div>
+    </div>
+    <div class="helpSection">
+      <h3>위협 요소</h3>
+      <div class="helpRow"><span class="helpKey">우주 괴물</span><span>잡히면 즉시 사망. 중력장에 닿으면 도망감</span></div>
+      <div class="helpRow"><span class="helpKey">외계인 침공</span><span>기지에서 2일 이상 나가지 않으면 발생. 전부 처치해야 해제</span></div>
+      <div class="helpRow"><span class="helpKey">레이저 몬스터</span><span>우주 곳곳에 고정 배치된 터렛형 괴물</span></div>
+      <div class="helpRow"><span class="helpKey">레이저 고래</span><span>2일마다 무리로 출현해 추적 후 레이저 발사. 중력장에 닿으면 도망가고 다음날 사라짐</span></div>
+      <div class="helpRow"><span class="helpKey">보스</span><span>10일마다 기지 앞에 등장하는 강력한 적</span></div>
+    </div>
+    <div class="helpSection">
+      <h3>자원</h3>
+      <div class="helpRow"><span class="helpKey">골드</span><span>외계 행성에서 처치 드랍 또는 우주 채굴로 획득, 기지로 가져와야 적립</span></div>
+      <div class="helpRow"><span class="helpKey">상점</span><span>우측 하단 상점 버튼에서 무기 / 보호막 / 생명력 구매</span></div>
+    </div>
+    <button id="closeHelpBtn" class="closeBtn">닫기</button>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div id="gameOverOverlay" class="modalOverlay hidden">
+  <div class="modalBox center">
+    <h1 class="goTitle">GAME OVER</h1>
+    <p id="goSurvived" class="goSub"></p>
+    <button id="retryBtn" class="buyBtn bigBtn">다시하기</button>
+  </div>
+</div>
+
+<!-- Ending -->
+<div id="endingOverlay" class="modalOverlay hidden">
+  <div id="endText" class="endText hidden">END</div>
+  <div id="endingFinal" class="endingFinal hidden">
+    <p class="endMsg">100일간의 생존 끝에, 그는 외계 동료와 함께 지구로 귀환했다.<br>인류와 외계 종족은 마침내 평화롭게 공존하는 새로운 시대를 열었다.</p>
+    <button id="restartBtn" class="buyBtn bigBtn">처음으로</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
