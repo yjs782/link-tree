@@ -1,17 +1,20 @@
-import LinkCard from "@/componets/LinkCard";
+import LinkList from "@/componets/LinkList";
 
 const links = [
   {
+    id: "blog",
     label: "블로그",
     url: "https://blog.naver.com/shit98",
     icon: <span className="text-lg">📝</span>,
   },
   {
+    id: "space-game",
     label: "우주 생존기: 100일 (웹게임)",
     url: "/space/index.html",
     icon: <span className="text-lg">🎮</span>,
   },
   {
+    id: "email",
     label: "이메일",
     url: "mailto:shit98@naver.com",
     icon: <span className="text-lg">📧</span>,
@@ -68,9 +71,7 @@ export default function Home() {
       </div>
 
       <div className="relative z-10 mt-12 flex w-full max-w-sm flex-col gap-4">
-        {links.map((link) => (
-          <LinkCard key={link.label} {...link} />
-        ))}
+        <LinkList links={links} />
       </div>
     </main>
   );
